@@ -3,5 +3,30 @@
   "icon": {
     "emoji": "🧳"
   },
-  "secrets": []
+  "secrets": [],
+  "tests": [
+    {
+      "id": "places.demo",
+      "visual": true,
+      "impact": ["public/**", "styles/**", "server.js", "tailwind.config.js"],
+      "name": "Mes lieux (démo)",
+      "path": "/?demo=1",
+      "expectText": "Tour de Belém"
+    },
+    {
+      "name": "Albums (démo)",
+      "path": "/albums?demo=1",
+      "expectText": "Week-end à Lisbonne"
+    },
+    {
+      "name": "Mes lieux, route simple",
+      "path": "/",
+      "expectSelector": "#places-screen"
+    },
+    {
+      "name": "Nouveau lieu",
+      "path": "/nouveau",
+      "expectText": "Enregistrer le lieu"
+    }
+  ]
 }
