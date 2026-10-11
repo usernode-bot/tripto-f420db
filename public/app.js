@@ -139,7 +139,9 @@
   let routeSeq = 0;
 
   function href(path) {
-    return path + location.search;
+    // data-nav values are built here, so a path that already carries the
+    // query (a router link) must not grow a second one.
+    return path.includes('?') ? path : path + location.search;
   }
   function nav(path, type = 'push', replace = false) {
     const url = href(path);
@@ -156,11 +158,13 @@
   window.addEventListener('popstate', () => render('pop'));
 
   // Clicks on [data-nav] links go through the router, keeping ?demo=1.
+  // The target lives in data-nav; these anchors carry no href attribute.
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a[data-nav]');
     if (!a) return;
     e.preventDefault();
-    nav(a.getAttribute('href'), a.dataset.transition || 'push');
+    const to = a.dataset.nav;
+    if (to) nav(to, a.dataset.transition || 'push');
   });
 
   function route(seq) {
@@ -208,6 +212,22 @@
       </div>`).join('')}
   </div>`;
 
+  // Mes lieux' own skeleton: a grey year bar over a white grouped list whose
+  // rows stand where the stamp-framed rows will be.
+  const skeletonHome = () => `
+    <div class="px-5 pt-6"><div class="skeleton h-5 w-20"></div></div>
+    <ul class="list mx-4 mt-3">
+      ${Array.from({ length: 5 }, (_, i) => `
+        <li class="list-row list-row-tall">
+          <div class="skeleton h-[58px] w-[50px]"></div>
+          <div class="flex-1">
+            <div class="skeleton mb-1.5 h-4 ${i % 2 ? 'w-2/3' : 'w-1/2'}"></div>
+            <div class="skeleton mb-1.5 h-3 w-1/3"></div>
+            <div class="skeleton h-3 w-2/5"></div>
+          </div>
+        </li>`).join('')}
+    </ul>`;
+
   const stateError = (what) => `
     <div class="state-error">
       <p class="text-body font-medium text-fg">Impossible de charger ${esc(what)}.</p>
@@ -222,16 +242,27 @@
   });
 
   // ── Screen: Mes lieux ────────────────────────────────────────────────────
-  async function screenHome(seq) {
+  // The shell (mark, button, title, count line and switch) is drawn at once,
+  // and only what sits under the switch changes with the load, so the
+  // header never moves between loading, populated, empty and error.
+  function homeShell() {
     app.innerHTML = `
       ${demoBanner()}
       ${brand(`<a class="btn-primary" data-nav="${esc(href('/nouveau'))}">${icon('plus', 'ic-20')}Ajouter un lieu</a>`)}
       <div id="places-screen" class="pb-16">
         <h1 class="px-4 pt-3 font-serif text-title">Mes lieux</h1>
-        <div class="px-4 pt-1"><div class="skeleton h-4 w-32"></div></div>
+        <div class="px-4 pt-1 text-small text-muted" data-count><div class="skeleton h-4 w-32"></div></div>
         ${segSwitch('lieux')}
-        ${skeletonRows(6)}
+        <div data-body>${skeletonHome()}</div>
       </div>`;
+    return {
+      count: app.querySelector('#places-screen [data-count]'),
+      body: app.querySelector('#places-screen [data-body]'),
+    };
+  }
+
+  async function screenHome(seq) {
+    const { count, body } = homeShell();
     try {
       if (DEMO && ME.staging && ME.signedIn && !demoSeeded) {
         demoSeeded = true;
@@ -239,12 +270,10 @@
       }
       const data = await api('/api/places');
       if (seq !== routeSeq) return;
-      const el = app.querySelector('#places-screen');
       if (!data.places.length) {
-        el.innerHTML = `
-          <h1 class="px-4 pt-3 font-serif text-title">Mes lieux</h1>
-          <p class="px-4 pt-1 text-small text-muted">0 lieu</p>
-          ${segSwitch('lieux')}
+        // Nothing to count yet: the empty message below says it already.
+        count.textContent = '';
+        body.innerHTML = `
           <div class="state-empty">
             <span class="stamp" aria-hidden="true"><i class="flex h-full items-center justify-center bg-raised text-muted">${icon('mark', 'ic-24')}</i></span>
             <p class="text-heading font-serif">Aucun lieu pour l’instant</p>
@@ -253,17 +282,14 @@
           </div>`;
         return;
       }
+      count.textContent = `${pl(data.stats.places, 'lieu', 'lieux')}, ${pl(data.stats.countries, 'pays', 'pays')}`;
       const byYear = new Map();
       for (const p of data.places) {
         const y = p.visited_on.slice(0, 4);
         if (!byYear.has(y)) byYear.set(y, []);
         byYear.get(y).push(p);
       }
-      el.innerHTML = `
-        <h1 class="px-4 pt-3 font-serif text-title">Mes lieux</h1>
-        <p class="px-4 pt-1 text-small text-muted">${pl(data.stats.places, 'lieu', 'lieux')}, ${pl(data.stats.countries, 'pays', 'pays')}</p>
-        ${segSwitch('lieux')}
-        ${[...byYear.entries()].map(([year, places]) => `
+      body.innerHTML = `${[...byYear.entries()].map(([year, places]) => `
           <div class="mb-2 mt-5 flex items-baseline justify-between px-5">
             <h2 class="font-serif text-heading">${year}</h2>
             <span class="text-small text-muted">${pl(places.length, 'lieu', 'lieux')}</span>
@@ -290,10 +316,15 @@
           </ul>`).join('')}`;
     } catch (err) {
       if (seq !== routeSeq) return;
-      app.querySelector('#places-screen').innerHTML = `
-        <h1 class="px-4 pt-3 font-serif text-title">Mes lieux</h1>
-        ${segSwitch('lieux')}
-        ${stateError('vos lieux')}`;
+      // Keep the count line's slot so the switch stays where it was.
+      count.textContent = ' ';
+      body.innerHTML = `
+        <div class="state-error">
+          <span class="stamp" aria-hidden="true"><i class="flex h-full items-center justify-center bg-raised text-muted">${icon('mark', 'ic-24')}</i></span>
+          <p class="text-heading font-serif">Impossible de charger vos lieux.</p>
+          <p class="text-body text-muted">Rien de ce que vous avez enregistré n’est perdu.</p>
+          <button class="btn-secondary mt-2" data-retry>Réessayer</button>
+        </div>`;
     }
   }
 
@@ -1174,7 +1205,7 @@
 
     // Leaving with unsaved changes asks first.
     async function leaveIfDirty(leaving) {
-      if (!dirty) return true;
+      if (!dirty) { leaving(); return true; }
       const ok = await (window.unNative && window.unNative.alert
         ? window.unNative.alert({
             title: 'Abandonner les modifications ?',
@@ -1278,7 +1309,10 @@
   }
 
   // ── Boot ─────────────────────────────────────────────────────────────────
+  // The Mes lieux shell goes up at once, before /api/me answers, so the
+  // screen never starts blank.
   (async () => {
+    if (location.pathname === '/') homeShell();
     try { ME = await api('/api/me'); } catch (_) { /* keep the local default */ }
     render('none');
   })();
