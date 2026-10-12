@@ -75,70 +75,66 @@ screen rather than building alongside it:
 Keep the `usernode-dev-console@1` forwarder `<script>` when rewriting the
 HTML — that block is platform infrastructure, not template content. So is
 the bridge `<script>`. The design kit is not placeholder either: build the
-real app with it, and fill in "## Design" below.
+real app with it, and fill in "## Design
 
-The screen has a light and a dark look and follows the viewer's Homeroom
-theme, switching live when they change it: the theme `<script>` right after
-the bridge tag sets a `dark` class on `<html>`. Keep that script, and give
-everything you build both looks (the design kit's colour tokens carry both), unless one
-fixed look is the point of this app, like a game's own scene; then say so
-under "## Design" below. Unless a request asks for one, add
-no theme picker: the viewer's Homeroom setting is the control. "The
-platform's light/dark theme inside the app frame" in the platform
-conventions has the details.
+This app's look, set by the first version. Every later change follows it,
+and updates it when a request changes the look on purpose.
 
-If a rule below this line conflicts with the hosted conventions, the
-hosted conventions win. This file is **app-specific** — write down
-things about *this* app that belong in the repo: product intent,
-data-model quirks, style preferences, opt-in policies (e.g. which
-tables you've marked private), etc.
-
----
-
-## About Tripto
-
-Gardez une trace de chaque lieu visité
-
-_(add a sentence or two more of product context here so Claude Code has a
-shared understanding of what this app is for)_
-
-## Design
-
-This app's look. The first real version fills in the blanks; every later
-change follows it, and updates it when a request changes the look on purpose.
-
-- **Palette:** _(name the accent, any second colour and the neutrals, e.g.
-  "accent: tomato red; second: basil green; neutrals: warm greys")_
-- **Signature element:** _(the one thing on screen drawn from this app's
-  subject, which no other app would have)_
-- **Type scale:** `text-title`, `text-heading`, `text-body`, `text-small`
-  _(change their sizes in `tailwind.config.js` if you must, not their number)_
-- **One fixed look:** _(only for an app drawn as its own scene, such as a
-  game: which look, and why. Otherwise delete this line.)_
+- **Palette: airmail.** Pale envelope blue-grey page (`ground`), white paper
+  (`surface`), navy ink (`fg`/`muted`), airmail blue for actions (`accent`
+  with `on-accent`), airmail red (`stamp`) for the envelope stripe and the
+  postmark only, never a button. Dark look: night navy page, dark slate
+  paper, light ink, lighter airmail blue and red. Values live in
+  `styles/tailwind-input.css`.
+- **Signature element: postage.** Place covers are framed like postage
+  stamps (`.stamp`, perforated edge); a place's page is an envelope
+  (`.envelope-lg`) with the red-and-blue airmail stripe (`.airmail`) and a
+  tilted double-ring postmark (`.postmark`) holding the city, the visit
+  date and the country. Album covers are envelope-framed (`.envelope`).
+  Notes are written on a postcard back with ruled lines (`.postcard`).
+  Each place type has its own small line icon.
+- **Type scale:** `text-title` (30/36, serif bold), `text-heading`
+  (20/28, serif semibold), `text-body` (16/24), `text-small` (13/20).
+  The serif (system serif stack) carries what you would write on a
+  postcard: screen titles, year headings, place and album names, notes.
+  Everything else is the system sans. Row names use the `.row-name`
+  component (17 px serif semibold).
+- Both looks follow the viewer's Homeroom theme; no theme picker.
 
 The kit is in `styles/tailwind-input.css`: colour tokens with a light and
-a dark value (named in `tailwind.config.js`), and a few components
-(`btn-primary`, `btn-secondary`, `field`, `list` and `list-row`,
-`card`, `section-label`, `skeleton`, `state-empty`, `state-error`).
+a dark value (named in `tailwind.config.js`), and components
+(`btn-primary`, `btn-secondary`, `btn-link`, `field`, `list` and
+`list-row`, `card`, `section-label`, `skeleton`, `state-empty`,
+`state-error`, plus the postage components above).
 Re-theme by changing the token values there, keeping every text pair at
 4.5:1 or more in both looks.
 
 - Colour comes only from the tokens (`bg-ground`, `bg-surface`,
   `text-fg`, `text-muted`, `border-line`, `bg-accent` with
-  `text-on-accent`, ...): never a raw hex value or a stock palette class.
+  `text-on-accent`, `text-stamp`, ...): never a raw hex value or a stock
+  palette class.
 - Tap targets are at least 44 px; the buttons and fields already are.
 - A field's label says what it is; its placeholder, if any, is an example
-  that says so ("e.g. 5.0"), never a bare value that could pass for one
-  already entered.
+  that says so ("par ex. Tour de Belém"), never a bare value that could
+  pass for one already entered.
 - Every screen that loads data has honest loading, empty and error states.
   Never show the empty state while loading or after a failure; an error says
-  what failed, what still works, and offers Retry.
-- Seed obviously fake staging demo data so the populated screen can be seen
-  ("Staging mock data" in the platform conventions).
+  what failed, what still works, and offers Réessayer.
+- Seed the staging demo with `?demo=1` (see "App-specific conventions").
 - No cards in cards, no uppercase eyebrows, no emoji as icons.
 
 ## App-specific conventions
 
-_(optional — e.g. "all currency values stored as integer cents, not
-floats"; "the `posts` table is append-only"; "avoid adding new
-dependencies"; etc.)_
+- Every table (`places`, `media`, `albums`, `album_places`, `demo_seeded`)
+  is marked `staging:private`: the app holds one person's private journal,
+  and staging copies none of its rows.
+- Visit dates are plain `YYYY-MM-DD` strings (`visited_on DATE`), formatted
+  in French with `timeZone: 'UTC'` so they never shift a day.
+- Videos are stored as links (`media.kind = 'video'`), never files: the
+  platform's file storage holds images only. Photo URLs in the database
+  come only from the platform's file storage; never store image bytes.
+- The first version's staging demo writes the viewing account its own demo
+  journal on its first `POST /api/demo` with `?demo=1` (gated on
+  `IS_STAGING`), exactly once per account (`demo_seeded`). Demo photos are
+  drawn SVG `data:` URLs the demo seeder makes; nothing outside staging
+  writes `data:` URLs.
