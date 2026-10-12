@@ -52,16 +52,24 @@ module.exports = {
         line: token('line'), // borders, dividers, skeletons
         accent: token('accent'), // the one accent: the primary action
         'on-accent': token('on-accent'), // text on the accent
+        stamp: token('stamp'), // airmail red: stripe and postmark only
         danger: token('danger'),
         'on-danger': token('on-danger'),
         focus: token('focus'), // the keyboard focus ring
       },
+      // Two families: the serif carries what you would write on a postcard
+      // (titles, place and album names, the notes); everything else the
+      // system sans.
+      fontFamily: {
+        serif: ['ui-serif', 'Iowan Old Style', 'Palatino Linotype', 'Palatino', 'Georgia', 'serif'],
+        sans: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
       // The type scale: four sizes, and nothing in between.
       fontSize: {
-        small: ['0.875rem', { lineHeight: '1.25rem' }],
+        small: ['0.8125rem', { lineHeight: '1.25rem' }],
         body: ['1rem', { lineHeight: '1.5rem' }],
         heading: ['1.25rem', { lineHeight: '1.75rem', fontWeight: '600' }],
-        title: ['1.75rem', { lineHeight: '2.25rem', fontWeight: '700' }],
+        title: ['1.875rem', { lineHeight: '2.25rem', fontWeight: '700' }],
       },
     },
   },
